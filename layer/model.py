@@ -28,7 +28,7 @@ class GaussianMixture(object):
             sum_to_one=True, learning_rate=1e-2
     ):
 
-        X = tf.placeholder(tf.float32, shape=(None, self.d), name="Input_Data")
+        X = tf.placeholder(tf.float32, shape=(None, self.d), name="inputs")
         w = tf.get_variable("weights", shape=(self.k,), initializer=init)
 
         if sum_to_one:
@@ -82,12 +82,39 @@ class GaussianMixture(object):
         # sum close to one when using sigmoid bijector on weights
         loss_2nd_term = -2 * tf.reduce_mean(tf.add_n(losses))
 
-        final_loss = tf.add(loss_1st_term, loss_2nd_term, name="Loss")
+        final_loss = tf.add(loss_1st_term, loss_2nd_term, name="loss")
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
         optimizer.minimize(final_loss)
 
         self.built = True
         self.computation_graph = tf.get_default_graph()
 
-    def train(self,):
-        pass
+    def train(
+        self, data, batch_size=None, convergence=1e-4, max_epochs=10000
+    ):
+        X = self.computation_graph.get_tensor_by_name("inputs:0")
+        w = self.computation_graph.get_tensor_by_name("weights:0")
+
+        mus = [
+            self.computation_graph.get_tensor_by_name(
+                f"Mu_{i}:0"
+            ) for i in range(self.k)
+        ]
+
+        cos = [
+            self.computation_graph.get_tensor_by_name(
+                f"Chol_Var_Assign_{i}:0"
+            ) for i in range(self.k)
+        ]
+
+        loss = self.computation_graph.get_tensor_by_name("loss:0")
+        training_op = self.computation_graph.get_operation_by_name("Adam")
+
+        with self.computation_graph.as_default():
+            init = tf.global_variables_initializer()
+
+        with tf.Session(graph=self.computation_graph) as sesh:
+            sesh.run(init)
+
+    def fit(self, data, *args, **kwargs):
+        self.train(self, data, **kwargs)
