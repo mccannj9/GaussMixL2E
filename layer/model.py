@@ -62,4 +62,32 @@ class GaussianMixture(object):
         losses = []
 
         for i in range(self.k):
+            cov_1 = chols[i] @ tf.transpose(chols[i])
+            for j in range(self.k):
+                cov_2 = chols[j] @ tf.transpose(chols[j])
+                diff = tfd.MultivariateNormalFullCovariance(
+                    locs=mus[i]-mus[j], covariance_matrix=cov_1+cov_2,
+                    name=f"mvn_diff_optimizer_{i}"
+                )
+                losses.append(diff.prob(tf.zeros(self.d)) * w[i] * w[j])
+
+        loss_1st_term = tf.add_n(losses)
+
+        losses = []
+
+        for i in range(self.k):
             losses.append(tf.multiply(w[i], mvns[i].prob(X)))
+
+        # can subtract, i.e. tf.log(tf.reduce_sum(w)) to keep weights
+        # sum close to one when using sigmoid bijector on weights
+        loss_2nd_term = -2 * tf.reduce_mean(tf.add_n(losses))
+
+        final_loss = tf.add(loss_1st_term, loss_2nd_term, name="Loss")
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        optimizer.minimize(final_loss)
+
+        self.built = True
+        self.computation_graph = tf.get_default_graph()
+
+    def train(self,):
+        pass
