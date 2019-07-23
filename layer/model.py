@@ -22,6 +22,7 @@ class GaussianMixture(object):
         # model features
         self.computation_graph = None
         self.parameters = {}
+        self.built = False
 
     def build(
         self, init=tf.variance_scaling_initializer(),
