@@ -29,6 +29,9 @@ class GaussianMixture(object):
             sum_to_one=True, learning_rate=1e-2
     ):
 
+        if self.built:
+            return
+
         X = tf.placeholder(tf.float32, shape=(None, self.d), name="inputs")
         w = tf.get_variable("weights", shape=(self.k,), initializer=init)
 
@@ -91,7 +94,8 @@ class GaussianMixture(object):
         self.computation_graph = tf.get_default_graph()
 
     def train(
-        self, data, batch_size=None, convergence=1e-4, max_epochs=10000
+        self, data, batch_size=None, convergence=1e-4,
+            max_epochs=10000, restore=False
     ):
         X = self.computation_graph.get_tensor_by_name("inputs:0")
         w = self.computation_graph.get_tensor_by_name("weights:0")
