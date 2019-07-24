@@ -15,12 +15,9 @@ def plot_data_with_contours(
     polar_coords = np.array([np.cos(polar_space), np.sin(polar_space)]).T
 
     for j in range(k):
-        print(j)
         _mu = mu[j]
-        print(_mu)
         _cov = cov[j]
-        print(_cov)
-        print(" ")
+        _chol = np.linalg.cholesky(_cov)
 
         for i in range(num_contours + 1):
             xy = np.concatenate(
@@ -30,7 +27,7 @@ def plot_data_with_contours(
                 ), axis=1
             )
 
-            tf = (np.linalg.cholesky(_cov) @ xy.T).T + _mu
+            tf = (_chol @ xy.T).T + _mu
             ax.plot(tf[:, 0], tf[:, 1], '-'*(1 + (i % 2)))
 
     # must call plt.show() outside function.
