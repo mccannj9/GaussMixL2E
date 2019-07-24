@@ -10,7 +10,7 @@ def plot_data_with_contours(
 ):
     fig, ax = plt.subplots()
     ax.scatter(data[:, 0], data[:, 1], c=labels, alpha=alpha)
-    # plt.scatter(data[:, 0], data[:, 1], c=labels, alpha=alpha)
+
     polar_space = np.linspace(0, 2*np.pi, num_points)
     polar_coords = np.array([np.cos(polar_space), np.sin(polar_space)]).T
 
@@ -43,6 +43,7 @@ if __name__ == "__main__":
     data_0 = np.random.multivariate_normal(mu[0], cov[0], 500)
     data_1 = np.random.multivariate_normal(mu[1], cov[1], 500)
     data = np.concatenate((data_0, data_1), axis=0)
+    labels = [0]*500 + [1]*500
 
-    f, a = plot_data_with_contours(data, mu, cov, k=2)
+    f, a = plot_data_with_contours(data, mu, cov, labels=labels, k=2)
     plt.show()

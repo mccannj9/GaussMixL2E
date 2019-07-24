@@ -28,9 +28,9 @@ def mahalanobis(data, mu, cov, k=2):
     in terms of k and d.
 
     """
-    mhd = np.zeros((data.shape[0], k))
+    mhd = np.zeros((data.shape[0], mu.shape[0]))
 
-    for i in range(k):
+    for i in range(mu.shape[0]):
         _mu = mu[i, :]
         _cov = cov[i, :, :]
 
@@ -40,8 +40,30 @@ def mahalanobis(data, mu, cov, k=2):
 
     return np.sqrt(mhd)
 
+
+
 if __name__ == "__main__":
+
+    import numpy as np
+
+    np.random.seed(1)
+    mu = np.array([[-1, -1], [1, 1]])
+    cov = np.array([[[0.1, 0.05],[0.05, 0.1]], [[0.17, -0.095],[-0.095, 0.17]]])
+
+    data_0 = np.random.multivariate_normal(mu[0], cov[0], 500)
+    data_1 = np.random.multivariate_normal(mu[1], cov[1], 500)
+    data = np.concatenate((data_0, data_1), axis=0)
+
     x = np.random.randn(5)
     print("Softmax:  ", softmax(x))
     print("Softplus: ", softplus(x))
     print("Sigmoid:  ", sigmoid(x))
+
+    mhd = mahalanobis(data, mu, cov)
+    print(mhd.shape)
+
+    from matplotlib import pyplot as plt
+    plt.hist(mhd[:,0], bins=30)
+    plt.show()
+    plt.hist(mhd[:,1], bins=30)
+    plt.show()
