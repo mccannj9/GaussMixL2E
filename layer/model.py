@@ -121,5 +121,15 @@ class GaussianMixture(object):
         with tf.Session(graph=self.computation_graph) as sesh:
             sesh.run(init)
 
+        # return loss and likelihood to fit method, for multiple tries
+        return 0
+
     def fit(self, data, *args, **kwargs):
         self.train(self, data, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        if not(self.built):
+            self.build(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name}: Built={self.built}, K={self.k}, D={self.d}"
