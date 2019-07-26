@@ -7,6 +7,11 @@ from utils.simulate import build_toy_dataset
 from layer.model import GaussianMixture
 
 data = build_toy_dataset(500)
-GMM = GaussianMixture(2, 2)
+real_labels = data[:, 2]
+# data = data[:, 0:2]
 
+GMM = GaussianMixture(2, 2)
 GMM(sum_to_one=False, learning_rate=0.01)
+
+print(data.shape)
+GMM.fit(data[:, 0:2])

@@ -1,9 +1,11 @@
 #! /usr/bin/env python3
 
+from utils.misc import stochastic_mini_batch as smb
+
+import numpy as np
+
 import tensorflow as tf
 import tensorflow_probability as tfp
-
-from utils.misc import stochastic_mini_batch as smb
 
 tfd = tfp.distributions
 
@@ -28,14 +30,14 @@ class GaussianMixture(object):
 
     def build(
         self, init=tf.variance_scaling_initializer(),
-            sum_to_one=True, learning_rate=1e-2
+        sum_to_one=True, learning_rate=1e-2
     ):
 
         if self.built:
             return
 
-        X = tf.placeholder(tf.float32, shape=(None, self.d), name="inputs")
-        w = tf.get_variable("weights", shape=(self.k,), initializer=init)
+        X = tf.compat.v1.placeholder(tf.float32, shape=(None, self.d), name="inputs")
+        w = tf.compat.v1.get_variable("weights", shape=(self.k,), initializer=init)
 
         if sum_to_one:
             w = tf.nn.softmax(w)
@@ -48,20 +50,20 @@ class GaussianMixture(object):
         mus, chols, mvns = [], [], []
 
         for i in range(self.k):
-            mu = tf.get_variable(f"Mu_{i}", shape=(self.d,), initializer=init)
-            ch = tf.get_variable(f"Chol_{i}", shape=(chol_shape,), initializer=init)
+            mu = tf.compat.v1.get_variable(f"Mu_{i}", shape=(self.d,), initializer=init)
+            ch = tf.compat.v1.get_variable(f"Chol_{i}", shape=(cholesky_shape,), initializer=init)
             ch = tfd.fill_triangular(ch)
             ch = bijection.forward(ch, name=f"Chol_Mat_{i}")
-            chol_var = tf.get_variable(f"Chol_Var_{i}", shape=(self.d, self.d))
+            chol_var = tf.compat.v1.get_variable(f"Chol_Var_{i}", shape=(self.d, self.d))
             # assigns cholesky matrix to node in graph for later retrieval
-            tf.compat.v1.assign(chol_var, chol, name=f"Chol_Var_Assign_{i}")
+            tf.compat.v1.assign(chol_var, ch, name=f"Chol_Var_Assign_{i}")
 
             mvn = tfd.MultivariateNormalTriL(
-                loc=mu, scale_tril=chol, name=f"mvn_mixture_{i}"
+                loc=mu, scale_tril=ch, name=f"mvn_mixture_{i}"
             )
 
             mus.append(mu)
-            chols.append(chol)
+            chols.append(ch)
             mvns.append(mvn)
 
         # setup the loss function for the model
@@ -72,7 +74,7 @@ class GaussianMixture(object):
             for j in range(self.k):
                 cov_2 = chols[j] @ tf.transpose(chols[j])
                 diff = tfd.MultivariateNormalFullCovariance(
-                    locs=mus[i]-mus[j], covariance_matrix=cov_1+cov_2,
+                    loc=mus[i]-mus[j], covariance_matrix=cov_1+cov_2,
                     name=f"mvn_diff_optimizer_{i}"
                 )
                 losses.append(diff.prob(tf.zeros(self.d)) * w[i] * w[j])
@@ -89,16 +91,19 @@ class GaussianMixture(object):
         loss_2nd_term = -2 * tf.reduce_mean(tf.add_n(losses))
 
         final_loss = tf.add(loss_1st_term, loss_2nd_term, name="loss")
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
         optimizer.minimize(final_loss)
 
         self.built = True
-        self.computation_graph = tf.get_default_graph()
+        self.computation_graph = tf.compat.v1.get_default_graph()
 
     def train(
-        self, data, batch_size=None, convergence=1e-4,
+        self, data, batch_size=None, converged=1e-4,
             max_epochs=10000, restore=False
     ):
+        if not(batch_size):
+            batch_size = data.shape[0]
+
         X = self.computation_graph.get_tensor_by_name("inputs:0")
         w = self.computation_graph.get_tensor_by_name("weights:0")
 
@@ -122,7 +127,9 @@ class GaussianMixture(object):
 
         with tf.Session(graph=self.computation_graph) as sesh:
             sesh.run(init)
+            print("DATA SHAPE ", data.shape)
             f = smb(X, data, batch_size)
+            print("TRAINING", f[X].shape)
             loss_prev = sesh.run(loss, feed_dict=f)
 
             for i in range(max_epochs):
@@ -141,10 +148,11 @@ class GaussianMixture(object):
                         loss_prev = loss_curr
 
         # return loss and likelihood to fit method, for multiple tries
-        return 0
+        return loss_curr, 0
 
     def fit(self, data, *args, **kwargs):
-        loss, lk = self.train(self, data, **kwargs)
+        print("hi", data.shape)
+        loss, lk = self.train(data, **kwargs)
         return {"loss": loss, "likelihood": lk}
 
     def fit_predict(self, data, *args, **kwargs):
@@ -164,3 +172,11 @@ class GaussianMixture(object):
 
     def __str__(self):
         return f"{self.name}: Built={self.built}, K={self.k}, D={self.d}"
+
+
+if __name__ == "__main__":
+    from GaussMixL2E.utils.simulate import build_toy_dataset
+    data = build_toy_dataset(500)
+
+    GMM = GaussianMixture(2, 2, name="GMM_test")
+

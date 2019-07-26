@@ -1,9 +1,11 @@
 #! /usr/bin/env python3
 
+import numpy as np
+
 def build_toy_dataset(N, K=None, D=None, pi=None):
     pi = np.array([0.4, 0.6])
     mus = [[2, 2], [-2, -2]]
-    stds = [[[1, 0.5], [0, 1]], [[1, 0], [0.5, 1]]]
+    stds = [[[0.1, 0.0], [0.0, 0.1]], [[0.1, 0.0], [0.0, 0.1]]]
     x = np.zeros((N, 3), dtype=np.float32)
     for n in range(N):
         k = np.argmax(np.random.multinomial(1, pi))
