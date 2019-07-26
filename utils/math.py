@@ -41,10 +41,7 @@ def mahalanobis(data, mu, cov, k=2):
     return np.sqrt(mhd)
 
 
-
 if __name__ == "__main__":
-
-    import numpy as np
 
     np.random.seed(1)
     mu = np.array([[-1, -1], [1, 1]])

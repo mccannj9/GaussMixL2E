@@ -3,6 +3,8 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from utils.misc import stochastic_mini_batch as smb
+
 tfd = tfp.distributions
 
 # set bijectors to ensure positive semidefinite cholesky matrix
@@ -18,11 +20,11 @@ class GaussianMixture(object):
         self.name = name
         self.k = k
         self.d = d
+        self.built = False
 
         # model features
         self.computation_graph = None
         self.parameters = {}
-        self.built = False
 
     def build(
         self, init=tf.variance_scaling_initializer(),
@@ -120,12 +122,41 @@ class GaussianMixture(object):
 
         with tf.Session(graph=self.computation_graph) as sesh:
             sesh.run(init)
+            f = smb(X, data, batch_size)
+            loss_prev = sesh.run(loss, feed_dict=f)
+
+            for i in range(max_epochs):
+                f = smb(X, data, batch_size)
+                sesh.run(training_op, feed_dict=f)
+
+                if i % 100 == 0:
+                    loss_curr = sesh.run(loss, feed_dict=f)
+                    d = np.abs(loss_curr - loss_prev)
+
+                    if d < converged:
+                        print(f"[Converged {i}]: {loss_curr}, {d}")
+                        break
+                    else:
+                        print(f"[Epoch {i}]: {loss_curr}")
+                        loss_prev = loss_curr
 
         # return loss and likelihood to fit method, for multiple tries
         return 0
 
     def fit(self, data, *args, **kwargs):
-        self.train(self, data, **kwargs)
+        loss, lk = self.train(self, data, **kwargs)
+        return {"loss": loss, "likelihood": lk}
+
+    def fit_predict(self, data, *args, **kwargs):
+        loss, lk = self.train(data, *args, **kwargs)
+        predictions = self.predict(data)
+
+        return {
+            "loss": loss, "likelihood": lk, "predictions": predictions
+        }
+
+    def predict(self, data):
+        pass
 
     def __call__(self, *args, **kwargs):
         if not(self.built):
