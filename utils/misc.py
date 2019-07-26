@@ -2,20 +2,21 @@
 
 import numpy as np
 
-def softplus(x):
-    return np.log(1 + np.exp(-np.abs(x))) + np.maximum(x, 0)
+def stochastic_mini_batch(input_tensor, input_data, batch_size):
+    idxs = np.random.choice(
+        input_data.shape[0], size=batch_size, replace=False
+    )
+    return {input_tensor: input_data[idxs]}
 
+def log_and_saver_setup(logdir, ckpt_id="model.ckpt"):
+    from datetime import datetime
+    import os
 
-def softmax(x):
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
+    now = datetime.utcnow().strftime("%Y-%m-%d-%H-%M-%S")
+    outdir = f"{logdir}/run-{now}"
+    ckpt = f"{outdir}/{ckpt_id}"
+    return ckpt
 
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
 
 if __name__ == "__main__":
-    x = np.random.randn(5)
-    print("Softmax:  ", softmax(x))
-    print("Softplus: ", softplus(x))
-    print("Sigmoid:  ", sigmoid(x))
+    pass
