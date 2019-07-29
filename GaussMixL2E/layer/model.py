@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 from utils.misc import stochastic_mini_batch as smb
+from utils.math import likelihood, sigmoid, softmax
 
 import numpy as np
 
@@ -41,8 +42,10 @@ class GaussianMixture(object):
 
         if sum_to_one:
             w = tf.nn.softmax(w)
+            self.weights_bijector = softmax
         else:
             w = tf.nn.sigmoid(w)
+            self.weights_bijector = sigmoid
 
         # number of elements in the cholesky matrix given d
         cholesky_shape = self.d * (self.d + 1) // 2
@@ -147,16 +150,49 @@ class GaussianMixture(object):
                         print(f"[Epoch {i}]: {loss_curr}")
                         loss_prev = loss_curr
 
-        # return loss and likelihood to fit method, for multiple tries
-        return loss_curr, 0
+            parameters = {
+                'k': self.k,
+                'd': self.d,
+                'mu': np.zeros((self.k, self.d)),
+                'cov': np.zeros((self.k, self.d, self.d)),
+                'weights': self.weights_bijector(sesh.run(w))
+            }
 
-    def fit(self, data, *args, **kwargs):
-        print("hi", data.shape)
-        loss, lk = self.train(data, **kwargs)
-        return {"loss": loss, "likelihood": lk}
+            for i in range(self.k):
+                mu, co = sesh.run([mus[i], cos[i]])#, feed_dict=feeder)
+                parameters['mu'][i, :] = mu
+                parameters['cov'][i, :, :] = co @ co.T
+            ll = likelihood(data, parameters)
+            parameters['loss'] = loss_curr
+            parameters['likelihood'] = ll
+
+        # return loss and likelihood to fit method, for multiple tries
+        return parameters, loss_curr, ll
+
+    def fit(self, data, *args, starts=1, **kwargs):
+        for i in range(starts):
+            parameters, loss, ll = self.train(data, **kwargs)
+            if i == 0:
+                best_ll = ll
+                best_parameters = parameters
+                best_loss = loss
+                print(f"initial run: {best_ll}")
+            else:
+                print(f"new run: {best_ll}")
+                if ll > best_ll:
+                    print(f"New best: {best_ll}")
+                    best_parameters = parameters
+                    best_ll = ll
+                    best_loss = loss
+
+        return {
+            "parameters": best_parameters,
+            "loss":best_loss,
+            "likelihood": best_ll
+        }
 
     def fit_predict(self, data, *args, **kwargs):
-        loss, lk = self.train(data, *args, **kwargs)
+        parameters, loss, lk = self.train(data, *args, **kwargs)
         predictions = self.predict(data)
 
         return {
