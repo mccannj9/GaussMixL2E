@@ -14,4 +14,4 @@ GMM = GaussianMixture(2, 2)
 GMM(sum_to_one=False, learning_rate=0.01)
 
 print(data.shape)
-GMM.fit(data[:, 0:2])
+test = GMM.fit(data[:, 0:2])

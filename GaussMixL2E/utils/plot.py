@@ -3,6 +3,7 @@
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+import numpy as np
 
 def plot_data_with_contours(
     data, mu, cov, num_contours=4, labels=None,

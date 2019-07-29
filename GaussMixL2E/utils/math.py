@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import numpy as np
-
+from scipy.stats import multivariate_normal as MVN
 
 def softplus(x):
     return np.log(1 + np.exp(-np.abs(x))) + np.maximum(x, 0)
@@ -14,6 +14,21 @@ def softmax(x):
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
+
+
+def likelihood(data, parameters):
+    k, d = parameters['mu'].shape
+
+    densities = np.zeros((data.shape[0], k))
+
+    for i in range(k):
+        mu = parameters['mu'][i]
+        cov = parameters['cov'][i]
+        densities[:, i] = MVN.pdf(data, mean=mu, cov=cov)
+    print(densities.shape, parameters['weights'].shape)
+
+
+    return np.sum(np.log(parameters['weights'] @ densities.T))
 
 
 def mahalanobis(data, mu, cov, k=2):
